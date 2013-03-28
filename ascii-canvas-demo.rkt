@@ -15,6 +15,16 @@
        [width-in-characters 40]
        [height-in-characters 20]))
 
+(for* ([xi (in-range 16)]
+       [yi (in-range 16)])
+  (define c (integer->char (+ xi (* yi 16))))
+  (send test-ac write c xi yi))
+
+(for* ([xi (in-range 16)]
+       [yi (in-range 16)])
+  (define c (integer->char (+ xi (* yi 16))))
+  (send test-ac write c (- 39 xi) yi (make-color (* xi 16) (* yi 16) 0)))
+
 (send test-ac write-center "this is a test" 10)
 (send test-ac write-center "this is a test in blue" 11 "blue")
 (send test-ac write-center "this is a test in blue on yellow" 12 "blue" "yellow")
@@ -23,6 +33,7 @@
 
 (thread
  (lambda ()
+   (sleep 2.5)
    (let loop ()
      (send test-ac write 
            (integer->char (random 256)) 
