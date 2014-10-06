@@ -4,7 +4,7 @@
 (define scribblings '(("manual.scrbl" ())))
 
 (define blurb '("ASCII canvas based on @hyperlink[https://github.com/trystan/AsciiPanel]{Trystan's AsciiPanel for Java}"))
-(define primary-file "ascii-canvas/main.rkt")
+(define primary-file "main.rkt")
 (define homepage "https://github.com/jpverkamp/ascii-canvas/")
 
 (define version "1.0")
