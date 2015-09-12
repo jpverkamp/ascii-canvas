@@ -322,14 +322,22 @@
     (set! old-foreground-colors (make-matrix width-in-characters height-in-characters (lambda (x y) (make-object color% "white"))))
     (set! old-background-colors (make-matrix width-in-characters height-in-characters (lambda (x y) (make-object color% "black"))))
     
+    ; Load the glyphs
     ; If the glyph file doesn't exist, generate one automatically
     ; Only do this if we're trying to use the default filename
-    (when (and (not (file-exists? tileset-filename))
-               (equal? tileset-filename "cp437_16x16.png"))
-      (generate-tileset tileset-filename))
-    
-    ; Load the glyphs
-    (define glyph-file (read-bitmap (build-path RUNTIME_DIR tileset-filename) 'unknown/alpha (->color "magenta")))
+    (define glyph-file
+      (cond
+        [(file-exists? (build-path RUNTIME_DIR tileset-filename))
+         (read-bitmap (build-path RUNTIME_DIR tileset-filename) 'unknown/alpha (->color "magenta"))]
+        [(equal? tileset-filename "cp437_16x16.png")
+         (with-cp437_16x16 (lambda () 
+                             (read-bitmap 
+                              (current-input-port)
+                              'unknown/alpha
+                              (->color "magenta"))))]
+        [else
+         (error 'glyph-file "cannot find glyph file ~a" tileset-filename)]))
+
     (set! glyphs (make-monochrome-bitmap (send glyph-file get-width) (send glyph-file get-height)))
     (define glyphs-dc (new bitmap-dc% [bitmap glyphs]))
     (send glyphs-dc draw-bitmap glyph-file 0 0)
