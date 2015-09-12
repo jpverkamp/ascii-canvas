@@ -1,15 +1,12 @@
-#lang racket
+#lang racket/base
 
 (require 
- racket/draw
  racket/gui
- racket/path
- racket/runtime-path)
+ "cp437_16x16.rkt")
 
 (provide
  (all-defined-out))
 
-(define-runtime-path RUNTIME_DIR ".")
 (define-syntax-rule (scope body* ...) (let () body* ...))
   
 ; A simple matrix ADT
@@ -322,7 +319,20 @@
     (set! old-background-colors (make-matrix width-in-characters height-in-characters (lambda (x y) (make-object color% "black"))))
     
     ; Load the glyphs
-    (define glyph-file (read-bitmap (build-path RUNTIME_DIR tileset-filename) 'unknown/alpha (->color "magenta")))
+    ; If the glyph file doesn't exist, generate one automatically
+    ; Only do this if we're trying to use the default filename
+    (define (read-glyph-input in)
+      (read-bitmap in 'unknown/alpha (->color "magenta")))
+
+    (define glyph-file
+      (cond
+        [(file-exists? tileset-filename)
+         (read-glyph-input tileset-filename)]
+        [(equal? tileset-filename "cp437_16x16.png")
+         (call-with-cp437_16x16 read-glyph-input)]
+        [else
+         (error 'glyph-file "cannot find glyph file ~a" tileset-filename)]))
+
     (set! glyphs (make-monochrome-bitmap (send glyph-file get-width) (send glyph-file get-height)))
     (define glyphs-dc (new bitmap-dc% [bitmap glyphs]))
     (send glyphs-dc draw-bitmap glyph-file 0 0)
