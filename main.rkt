@@ -1,16 +1,12 @@
-#lang racket
+#lang racket/base
 
 (require 
- racket/draw
  racket/gui
- racket/path
- racket/runtime-path
  "cp437_16x16.rkt")
 
 (provide
  (all-defined-out))
 
-(define-runtime-path RUNTIME_DIR ".")
 (define-syntax-rule (scope body* ...) (let () body* ...))
   
 ; A simple matrix ADT
@@ -330,8 +326,6 @@
 
     (define glyph-file
       (cond
-        [(file-exists? (build-path RUNTIME_DIR tileset-filename))
-         (read-glyph-input (build-path RUNTIME_DIR tileset-filename))]
         [(file-exists? tileset-filename)
          (read-glyph-input tileset-filename)]
         [(equal? tileset-filename "cp437_16x16.png")
