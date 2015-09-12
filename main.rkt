@@ -325,16 +325,17 @@
     ; Load the glyphs
     ; If the glyph file doesn't exist, generate one automatically
     ; Only do this if we're trying to use the default filename
+    (define (read-glyph-input in)
+      (read-bitmap in 'unknown/alpha (->color "magenta")))
+
     (define glyph-file
       (cond
         [(file-exists? (build-path RUNTIME_DIR tileset-filename))
-         (read-bitmap (build-path RUNTIME_DIR tileset-filename) 'unknown/alpha (->color "magenta"))]
+         (read-glyph-input (build-path RUNTIME_DIR tileset-filename))]
+        [(file-exists? tileset-filename)
+         (read-glyph-input tileset-filename)]
         [(equal? tileset-filename "cp437_16x16.png")
-         (with-cp437_16x16 (lambda () 
-                             (read-bitmap 
-                              (current-input-port)
-                              'unknown/alpha
-                              (->color "magenta"))))]
+         (call-with-cp437_16x16 read-glyph-input)]
         [else
          (error 'glyph-file "cannot find glyph file ~a" tileset-filename)]))
 
