@@ -83,7 +83,9 @@
      [foreground-colors #f]
      [old-chars #f]
      [old-background-colors #f]
-     [old-foreground-colors #f])
+     [old-foreground-colors #f]
+     [dirty-tiles null]
+     [redraw-everything? #f])
     
     ; Height in pixels of a character
     (define/public (get-char-height) char-height)
@@ -125,7 +127,7 @@
                 (and (or (= argc 3) (= argc 4)) (not (andmap byte? args))))
         (raise-argument-error 'set-default-background-color "color name or rgb (as bytes) or rgba (as bytes)" args))
       (set! default-background-color (apply make-object (cons color% args))))
-        
+    
     ; Control the default foreground color used to print tiles if no other color is given
     (define/public (get-default-foreground-color) default-foreground-color)
     (define/public (set-default-foreground-color . args)
@@ -136,54 +138,58 @@
         (raise-argument-error 'set-default-foreground-color "color name or rgb (as bytes) or rgba (as bytes)" args))
       (set! default-foreground-color (apply make-object (cons color% args))))
     
-    ; Repaint the canvas
     (define/private (my-paint-callback self dc)
-      ; If the buffer hasn't been defined, do that
       (unless offscreen-buffer
         (set! offscreen-buffer (make-screen-bitmap (get-width) (get-height)))
         (set! offscreen-buffer-dc (new bitmap-dc% [bitmap offscreen-buffer])))
       
-      ; Draw any new characters to the buffer
-      (for* ([x (in-range width-in-characters)]
-             [y (in-range height-in-characters)]
-             #:when (or (not (eq? (matrix-ref chars x y) (matrix-ref old-chars x y)))
-                        (not (color-equal? (matrix-ref background-colors x y) (matrix-ref old-background-colors x y)))
-                        (not (color-equal? (matrix-ref foreground-colors x y) (matrix-ref old-foreground-colors x y)))))
-        ; Draw the glyph to the buffer
-        (define src-c (char->integer (matrix-ref chars x y)))
-        (define src-x (remainder src-c 16))
-        (define src-y (quotient src-c 16))
-        
-        ; Draw the foreground 
-        ; NOTE: Not a mistake. Yes, it is weird.
-        (send offscreen-buffer-dc set-brush (new brush% [color (matrix-ref foreground-colors x y)]))
-        (send offscreen-buffer-dc draw-rectangle
-              (* x char-width)
-              (* y char-height)
-              char-width
-              char-height)
-        
-        ; Overlay the background
-        ; NOTE: Not a mistake. Yes, it is weird.
-        (send offscreen-buffer-dc draw-bitmap-section
-              glyphs
-              (* x char-width)
-              (* y char-height)
-              (* src-x char-width)
-              (* src-y char-height)
-              char-width
-              char-height
-              'solid ; could be solid, opaque, or xor
-              (matrix-ref background-colors x y)
-              glyphs)
-        
-        ; Update maps
-        (matrix-set! old-chars x y (matrix-ref chars x y))
-        (matrix-set! old-background-colors x y (matrix-ref background-colors x y))
-        (matrix-set! old-foreground-colors x y (matrix-ref foreground-colors x y)))
+      (if redraw-everything?
+          ;repaint the entire canvas
+          (for* ([x (in-range width-in-characters)]
+                 [y (in-range height-in-characters)]
+                 #:when (or (not (eq? (matrix-ref chars x y) (matrix-ref old-chars x y)))
+                            (not (color-equal? (matrix-ref background-colors x y) (matrix-ref old-background-colors x y)))
+                            (not (color-equal? (matrix-ref foreground-colors x y) (matrix-ref old-foreground-colors x y)))))
+            (paint self dc x y))
+          ;just update the dirty tiles
+          (for ([dirty-tile (in-list dirty-tiles)])
+            (paint self dc (first dirty-tile) (second dirty-tile))))
+      (send dc draw-bitmap offscreen-buffer 0 0)
+      (set! dirty-tiles null)
+      (set! redraw-everything? #f))
+    
+    (define (paint self dc x y)
+      (define src-c (char->integer (matrix-ref chars x y)))
+      (define src-x (remainder src-c 16))
+      (define src-y (quotient src-c 16))
       
-      ; Finally, flip the buffers
-      (send dc draw-bitmap offscreen-buffer 0 0))
+      ; Draw the foreground 
+      ; NOTE: Not a mistake. Yes, it is weird.
+      (send offscreen-buffer-dc set-brush (new brush% [color (matrix-ref foreground-colors x y)]))
+      (send offscreen-buffer-dc draw-rectangle
+                (* x char-width)
+                (* y char-height)
+                char-width
+                char-height)
+      
+      ; Overlay the background
+      ; NOTE: Not a mistake. Yes, it is weird.
+      (send offscreen-buffer-dc draw-bitmap-section
+                glyphs
+                (* x char-width)
+                (* y char-height)
+                (* src-x char-width)
+                (* src-y char-height)
+                char-width
+                char-height
+                'solid ; could be solid, opaque, or xor
+                (matrix-ref background-colors x y)
+                glyphs)
+      
+      ; Update maps
+      (matrix-set! old-chars x y (matrix-ref chars x y))
+      (matrix-set! old-background-colors x y (matrix-ref background-colors x y))
+      (matrix-set! old-foreground-colors x y (matrix-ref foreground-colors x y)))
     
     ; Clear the screen
     (define/public clear
@@ -236,7 +242,8 @@
          (matrix-set! chars x y char)
          (matrix-set! foreground-colors x y (->color foreground))
          (matrix-set! background-colors x y (->color background))
-         
+
+         (set! dirty-tiles (cons (list x y) dirty-tiles))
          (set! cursor-x (+ x 1))
          (set! cursor-y (+ y 1))]))
         
@@ -297,7 +304,8 @@
             (f xi yi (matrix-ref chars xi yi) (matrix-ref foreground-colors xi yi) (matrix-ref background-colors xi yi)))
           (matrix-set! chars xi yi char)
           (matrix-set! foreground-colors xi yi fg)
-          (matrix-set! background-colors xi yi bg))]))
+          (matrix-set! background-colors xi yi bg))
+        (set! redraw-everything? #t)]))
         
     
     ; Validate that the width and height make sense
@@ -321,7 +329,6 @@
     
     (set! char-width (quotient (send glyphs get-width) 16))
     (set! char-height (quotient (send glyphs get-height) 16))
-    
  
     ; Create the canvas
     (super-new 
