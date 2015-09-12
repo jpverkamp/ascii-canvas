@@ -243,7 +243,7 @@
          (matrix-set! foreground-colors x y (->color foreground))
          (matrix-set! background-colors x y (->color background))
 
-         (set! dirty-tiles (append dirty-tiles (list (list x y)))
+         (set! dirty-tiles (cons (list x y) dirty-tiles))
          (set! cursor-x (+ x 1))
          (set! cursor-y (+ y 1))]))
         
