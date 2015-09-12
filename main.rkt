@@ -142,7 +142,8 @@
       (unless offscreen-buffer
         (set! offscreen-buffer (make-screen-bitmap (get-width) (get-height)))
         (set! offscreen-buffer-dc (new bitmap-dc% [bitmap offscreen-buffer])))
-      (if (or redraw-everything? (null? dirty-tiles))
+      
+      (if redraw-everything?
           ;repaint the entire canvas
           (for* ([x (in-range width-in-characters)]
                  [y (in-range height-in-characters)]
