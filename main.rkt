@@ -4,7 +4,8 @@
  racket/draw
  racket/gui
  racket/path
- racket/runtime-path)
+ racket/runtime-path
+ "cp437_16x16.rkt")
 
 (provide
  (all-defined-out))
@@ -320,6 +321,12 @@
     (set! old-chars (make-matrix width-in-characters height-in-characters (lambda (x y) (integer->char 0))))
     (set! old-foreground-colors (make-matrix width-in-characters height-in-characters (lambda (x y) (make-object color% "white"))))
     (set! old-background-colors (make-matrix width-in-characters height-in-characters (lambda (x y) (make-object color% "black"))))
+    
+    ; If the glyph file doesn't exist, generate one automatically
+    ; Only do this if we're trying to use the default filename
+    (when (and (not (file-exists? tileset-filename))
+               (equal? tileset-filename "cp437_16x16.png"))
+      (generate-tileset tileset-filename))
     
     ; Load the glyphs
     (define glyph-file (read-bitmap (build-path RUNTIME_DIR tileset-filename) 'unknown/alpha (->color "magenta")))
